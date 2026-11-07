@@ -1,0 +1,59 @@
+{
+  "name": "n8n-nodes-corbit-sms",
+  "version": "1.0.0",
+  "description": "n8n node for Corbit SMS: send SMS (single and bulk), check delivery status and reports, read the balance and sender names.",
+  "license": "MIT",
+  "homepage": "https://github.com/agamalsa/n8n-nodes-corbit-sms#readme",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "corbit",
+    "sms",
+    "saudi-arabia",
+    "otp"
+  ],
+  "author": {
+    "name": "Ahmed Gamal",
+    "email": "a.gamal@corbit.sa"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agamalsa/n8n-nodes-corbit-sms.git"
+  },
+  "scripts": {
+    "build": "n8n-node build",
+    "build:watch": "tsc --watch",
+    "dev": "n8n-node dev",
+    "lint": "n8n-node lint",
+    "lint:fix": "n8n-node lint --fix",
+    "release": "n8n-node release",
+    "prepublishOnly": "n8n-node prerelease",
+    "test": "node --test test/*.test.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "strict": true,
+    "credentials": [
+      "dist/credentials/CorbitSmsApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/CorbitSms/CorbitSms.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@n8n/node-cli": "*",
+    "eslint": "9.32.0",
+    "prettier": "3.6.2",
+    "release-it": "^21.1.0",
+    "typescript": "5.9.2"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "bugs": {
+    "url": "https://github.com/agamalsa/n8n-nodes-corbit-sms/issues"
+  }
+}

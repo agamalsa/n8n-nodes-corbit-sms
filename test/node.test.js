@@ -37,6 +37,17 @@ const fail = (statusCode, body, headers = {}) => ({ statusCode, body, headers })
 const run = (c) => new CorbitSms().execute.call(c);
 
 // ---------- helpers ----------
+test('normalizeNumber rejects input that could become a wrong number', () => {
+	for (const bad of ['9.66501E+11', '966501234567.0', '+966 50 123 4567 ext 12', 966501234567.5, -966501234567, 'abc966501234567', '+0501234567', {}, ['966501234567']]) {
+		assert.equal(G.normalizeNumber(bad), undefined, String(bad));
+	}
+	assert.equal(G.normalizeNumber('+966 (0) 50 123 4567'), '966501234567');
+	assert.equal(G.normalizeNumber('9660501234567'), '966501234567');
+	assert.equal(G.normalizeNumber('٠٥٠١٢٣٤٥٦٧'), '966501234567');
+	assert.equal(G.normalizeNumber('۹۶۶۵۰۱۲۳۴۵۶۷'), '966501234567');
+	assert.equal(G.normalizeNumber('(050) 123-4567'), '966501234567');
+});
+
 test('normalizeNumber handles international, 00, Saudi local and junk', () => {
 	assert.equal(G.normalizeNumber('+966 50 123 4567'), '966501234567');
 	assert.equal(G.normalizeNumber('00966501234567'), '966501234567');

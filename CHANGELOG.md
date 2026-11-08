@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1 (2026-11-08)
+
+- Phone numbers are checked more strictly, so a messy value can never turn into a different, valid-looking number. Values such as `9.66501E+11` (a number exported from a spreadsheet), `966501234567.0` or `+966 50 123 4567 ext 12` are now rejected with an error instead of being sent.
+- Arabic-Indic digits (٠٥٠١٢٣٤٥٦٧) and `+966 (0)50…` are accepted.
+
 ## 1.1.0 (2026-11-08)
 
 - Fix: a Message that comes from an expression as a number (for example an OTP code) no longer stops the node.

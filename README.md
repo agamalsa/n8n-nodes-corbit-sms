@@ -41,7 +41,7 @@ Keep **Base URL** as `https://api.corbit.sa` unless Corbit support gives you ano
 
 ## Usage
 
-**Phone numbers.** Use the international format, for example `966501234567`. Spaces, dashes, a leading `+` or `00` are removed. Saudi local numbers (`05XXXXXXXX`) are converted to `9665XXXXXXXX`. Local numbers of other countries (starting with `0`) are rejected, so nothing is sent to a wrong number: write them in international format.
+**Phone numbers.** Use the international format, for example `966501234567`. Spaces, dashes, brackets, a leading `+` or `00` are removed, and Arabic digits are accepted. Saudi local numbers (`05XXXXXXXX`) are converted to `9665XXXXXXXX`. Anything that could turn into a wrong number is rejected and nothing is sent: local numbers of other countries (starting with `0`; write them in international format), decimals such as `9.66501E+11` from a spreadsheet, and extra text such as `ext 12`.
 
 **Sender name.** Open the list to pick one of your approved sender names (it loads when you open it), or switch to **By Name** and type the name. You can also use an expression.
 

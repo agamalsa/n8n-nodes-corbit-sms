@@ -22,18 +22,40 @@ export interface CorbitRequestExtras {
 
 /**
  * Turns a phone number into the digits-only international format the API expects.
- * Accepts "+966 50 123 4567", "00966501234567", "966501234567", and the Saudi local
- * forms "0501234567" and "501234567". Any other number that starts with a single 0
- * is a local number of an unknown country, so it is rejected rather than guessed.
+ * Accepts "+966 50 123 4567", "00966501234567", "966501234567", "+966 (0)50 123 4567",
+ * Arabic-Indic digits, and the Saudi local forms "0501234567" and "501234567".
+ * Anything that could turn into a wrong number is rejected instead of guessed:
+ * local numbers of other countries, decimals, "9.66501E+11" from a spreadsheet, "ext 12".
  * Returns undefined when the number cannot be used.
  */
 export function normalizeNumber(raw: unknown): string | undefined {
-	if (raw === null || raw === undefined) return undefined;
-	let digits = String(raw).replace(/\D/g, '');
-	if (digits.startsWith('00')) digits = digits.slice(2);
-	else if (/^05\d{8}$/.test(digits)) digits = '966' + digits.slice(1);
-	else if (/^5\d{8}$/.test(digits)) digits = '966' + digits;
-	else if (digits.startsWith('0')) return undefined;
+	let text: string;
+	if (typeof raw === 'number') {
+		if (!Number.isSafeInteger(raw) || raw <= 0) return undefined;
+		text = String(raw);
+	} else if (typeof raw === 'string') {
+		text = raw
+			.trim()
+			.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+			.replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0));
+	} else {
+		return undefined;
+	}
+	if (!/^\+?[\d\s\-()]+$/.test(text)) return undefined;
+	let digits = text.replace(/\D/g, '');
+	if (text.startsWith('+')) {
+		// Already international.
+	} else if (digits.startsWith('00')) {
+		digits = digits.slice(2);
+	} else if (/^05\d{8}$/.test(digits)) {
+		digits = '966' + digits.slice(1);
+	} else if (/^5\d{8}$/.test(digits)) {
+		digits = '966' + digits;
+	} else if (digits.startsWith('0')) {
+		return undefined;
+	}
+	// "+966 (0)50 …": drop the trunk zero after the Saudi country code.
+	if (/^9660\d{9}$/.test(digits)) digits = '966' + digits.slice(4);
 	return /^[1-9]\d{7,14}$/.test(digits) ? digits : undefined;
 }
 

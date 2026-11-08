@@ -13,7 +13,7 @@ This is an n8n community node for [Corbit SMS](https://sms.corbit.sa), an SMS ga
 
 ## Installation
 
-Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n community nodes documentation. The package name is `n8n-nodes-corbit-sms`.
+In n8n, open **Settings → Community Nodes → Install**, enter `n8n-nodes-corbit-sms` and confirm. For more details, see the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n documentation.
 
 ## Operations
 
@@ -64,4 +64,4 @@ Tested with n8n 2.46.6 on Node.js 24.
 
 - [n8n community nodes documentation](https://docs.n8n.io/integrations/#community-nodes)
 - [Corbit SMS API documentation](https://api.corbit.sa/doc)
-- [Corbit support](https://corbit.zohodesk.sa/portal/en/newticket)
+- [Corbit support](https://corbit.zohodesk.sa/portal/en/newticket) · support@corbit.sa · 920006900

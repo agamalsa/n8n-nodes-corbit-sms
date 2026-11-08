@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1 (2026-11-08)
+
+- Docs: clearer install steps (Settings → Community Nodes) and support contacts in the README.
+- Release: published from GitHub Actions with npm trusted publishing (no long-lived token).
+
 ## 1.0.0 (2026-11-07)
 
 - First release.

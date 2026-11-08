@@ -2,7 +2,9 @@
 	"node": "n8n-nodes-corbit-sms.corbitSms",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Communication"],
+	"categories": [
+		"Communication"
+	],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -14,5 +16,12 @@
 				"url": "https://github.com/agamalsa/n8n-nodes-corbit-sms#readme"
 			}
 		]
-	}
+	},
+	"alias": [
+		"SMS",
+		"text message",
+		"OTP",
+		"Saudi Arabia",
+		"Corbit"
+	]
 }

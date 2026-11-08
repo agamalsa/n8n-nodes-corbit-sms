@@ -8,6 +8,7 @@ This is an n8n community node for [Corbit SMS](https://sms.corbit.sa), an SMS ga
 - [Operations](#operations)
 - [Credentials](#credentials)
 - [Usage](#usage)
+- [Example workflow](#example-workflow)
 - [Compatibility](#compatibility)
 - [Resources](#resources)
 
@@ -40,21 +41,34 @@ Keep **Base URL** as `https://api.corbit.sa` unless Corbit support gives you ano
 
 ## Usage
 
-**Phone numbers.** Use the international format, for example `9665XXXXXXXX`. Spaces, dashes, a leading `+` or `00` are removed. Saudi local numbers such as `05XXXXXXXX` are converted to `9665XXXXXXXX`.
+**Phone numbers.** Use the international format, for example `966501234567`. Spaces, dashes, a leading `+` or `00` are removed. Saudi local numbers (`05XXXXXXXX`) are converted to `9665XXXXXXXX`. Local numbers of other countries (starting with `0`) are rejected, so nothing is sent to a wrong number: write them in international format.
 
 **Sender name.** Open the list to pick one of your approved sender names (it loads when you open it), or switch to **By Name** and type the name. You can also use an expression.
 
-**Send Bulk.** Enter the numbers separated by commas or new lines, or pass an array with an expression. Duplicates are removed. If any number is invalid, the node stops before sending, because Corbit SMS rejects the whole request.
+**Send Bulk.** Enter the numbers separated by commas or new lines, or pass a list with an expression. Duplicates are removed. If any number is invalid, the node stops before sending, because Corbit SMS rejects the whole request.
 
 **Message length.** Up to 1600 characters.
 
 **Duplicate protection.** Corbit SMS blocks the same text to the same number within one hour. To send it again on purpose (for example an OTP resend), turn on **Allow Duplicate** under **Options**.
 
-**Safe retries.** Set an **Idempotency Key** under **Options** (for example `{{ $execution.id }}-{{ $json.orderId }}`). If the request is retried with the same key, Corbit SMS returns the first result and does not send again.
+**Safe retries.** Set an **Idempotency Key** under **Options**, with a different value for each message (for example `{{ $execution.id }}-{{ $json.orderId }}`). If the request is retried with the same key, Corbit SMS returns the first result and does not send again. Don't use one fixed key for many items.
 
 **Rate limit.** 1000 requests per minute per token. If you hit it, turn on **Retry On Fail** in the node settings.
 
-**Output.** Send returns `messageId`, `status`, `to` and `senderName`. Use `messageId` with Get Status or Get Delivery Report.
+**Output.** Send returns `messageId`, `status`, `to` and `senderName`; Send Bulk also returns `numbers` and `recipients`. Use `messageId` with Get Status or Get Delivery Report. Get Delivery Report returns one item per recipient.
+
+**AI agents.** The node can be used as a tool by the n8n AI Agent. Set **Sender Name** to a fixed value when you use it as a tool, so the agent doesn't have to guess it.
+
+## Example workflow
+
+[`examples/send-otp-and-check-delivery.json`](examples/send-otp-and-check-delivery.json) sends a one-time code and checks that it was delivered. Import it in n8n with **Workflow menu → Import from File**.
+
+1. **Webhook** (POST `/send-otp`) receives `{ "phone": "966501234567", "code": "4821" }`.
+2. **Corbit SMS → Send** sends `Your verification code is 4821` to the phone. **Allow Duplicate** is on, so a resend of the same code is not blocked, and the execution ID is the idempotency key, so a retry of the same execution never sends twice.
+3. **Wait** 30 seconds.
+4. **Corbit SMS → Get Status** reads the delivery status of the message.
+
+Before you run it, choose your Corbit SMS credential in both Corbit SMS nodes and replace `YourSender` with one of your approved sender names.
 
 ## Compatibility
 

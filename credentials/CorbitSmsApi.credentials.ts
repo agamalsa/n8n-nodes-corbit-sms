@@ -31,6 +31,7 @@ export class CorbitSmsApi implements ICredentialType {
 			name: 'baseUrl',
 			type: 'string',
 			default: 'https://api.corbit.sa',
+			placeholder: 'https://api.corbit.sa',
 			description: 'Leave as it is unless Corbit support gives you another address',
 		},
 	];
@@ -46,7 +47,7 @@ export class CorbitSmsApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.baseUrl.replace(/\\/+$/, "")}}',
+			baseURL: '={{($credentials.baseUrl || "https://api.corbit.sa").replace(/\\/+$/, "")}}',
 			url: '/api/v1/get-balance',
 			method: 'POST',
 			headers: {

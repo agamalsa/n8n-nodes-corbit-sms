@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0 (2026-11-08)
+
+- Fix: a Message that comes from an expression as a number (for example an OTP code) no longer stops the node.
+- Change: Get Delivery Report returns one item per recipient (with `messageId` and `jobId` on each).
+- Change: local numbers of other countries that start with `0` are rejected instead of being treated as Saudi numbers. Saudi local numbers (`05XXXXXXXX`) are still converted.
+- Clearer errors: they name the field ('To', 'Numbers', 'Message', 'Message ID', 'Sender Name') and add a hint for Corbit codes such as low balance, duplicate message, rate limit and idempotency key reuse. With "Continue On Fail" the hint is in a `description` field.
+- Idempotency Key is checked against the 255-character limit.
+- Get Many sender names stops paging once the limit is reached.
+- Action names, placeholders and descriptions follow the n8n UX guidelines; descriptions are clearer for AI agents.
+- README: example workflow (`examples/send-otp-and-check-delivery.json`).
+
 ## 1.0.2 (2026-11-08)
 
 - Fix: the Sender Name list no longer shows "Error fetching options" when a Send node is first added. It is now a list that loads when opened, with a **By Name** option to type the sender.

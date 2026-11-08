@@ -29,25 +29,25 @@ export const nodeProperties: INodeProperties[] = [
 			{
 				name: 'Get Delivery Report',
 				value: 'getReport',
-				action: 'Get the delivery report of a message',
-				description: 'Get the delivery result for each recipient of a message',
+				action: 'Get delivery report of message',
+				description: 'Get the delivery result for each recipient of a message, one item per recipient',
 			},
 			{
 				name: 'Get Status',
 				value: 'getStatus',
-				action: 'Get the status of a message',
+				action: 'Get status of message',
 				description: 'Get the current status of a sent message',
 			},
 			{
 				name: 'Send',
 				value: 'send',
-				action: 'Send an SMS',
+				action: 'Send SMS',
 				description: 'Send an SMS to one mobile number',
 			},
 			{
 				name: 'Send Bulk',
 				value: 'sendBulk',
-				action: 'Send an SMS to many numbers',
+				action: 'Send SMS to many numbers',
 				description: 'Send the same SMS to many mobile numbers in one request',
 			},
 		],
@@ -63,7 +63,7 @@ export const nodeProperties: INodeProperties[] = [
 			{
 				name: 'Get Balance',
 				value: 'getBalance',
-				action: 'Get the account balance',
+				action: 'Get account balance',
 				description: 'Get the remaining SMS balance of the account',
 			},
 		],
@@ -98,7 +98,8 @@ export const nodeProperties: INodeProperties[] = [
 		required: true,
 		default: { mode: 'list', value: '' },
 		displayOptions: { show: { resource: ['sms'], operation: sendOps } },
-		description: 'Approved sender name the message is sent from',
+		description:
+			'Sender name the message is sent from. It must exactly match a sender name that is approved on your Corbit SMS account.',
 		modes: [
 			{
 				displayName: 'From List',
@@ -120,10 +121,10 @@ export const nodeProperties: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		placeholder: '9665XXXXXXXX',
+		placeholder: 'e.g. 966501234567',
 		displayOptions: { show: { resource: ['sms'], operation: ['send'] } },
 		description:
-			'Mobile number in international format. Saudi local numbers such as 05XXXXXXXX are converted automatically.',
+			'Mobile number in international format, e.g. 966501234567. Saudi local numbers (05XXXXXXXX) are converted automatically; numbers from other countries must use the international format.',
 	},
 	{
 		displayName: 'Numbers',
@@ -132,10 +133,10 @@ export const nodeProperties: INodeProperties[] = [
 		typeOptions: { rows: 4 },
 		required: true,
 		default: '',
-		placeholder: '9665XXXXXXXX, 9665YYYYYYYY',
+		placeholder: 'e.g. 966501234567, 966551234567',
 		displayOptions: { show: { resource: ['sms'], operation: ['sendBulk'] } },
 		description:
-			'Mobile numbers separated by commas or new lines, or an array from an expression. If any number is invalid nothing is sent.',
+			'Comma-separated mobile numbers in international format (new lines also work). If any number is invalid, nothing is sent.',
 	},
 	{
 		displayName: 'Message',
@@ -146,6 +147,7 @@ export const nodeProperties: INodeProperties[] = [
 		default: '',
 		displayOptions: { show: { resource: ['sms'], operation: sendOps } },
 		description: 'Text of the SMS, up to 1600 characters',
+		placeholder: 'e.g. Your verification code is 4821',
 	},
 	{
 		displayName: 'Options',
@@ -169,7 +171,7 @@ export const nodeProperties: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'A unique value (up to 255 characters). If the request is retried with the same key, the first result is returned and nothing is sent again.',
+					'A unique value per message (up to 255 characters), for example an expression that combines the execution ID with the ID of the item. If the same request is retried with the same key, the first result is returned and nothing is sent again. Do not use one fixed key for many items.',
 			},
 		],
 	},

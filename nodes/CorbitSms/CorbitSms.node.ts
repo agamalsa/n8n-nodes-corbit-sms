@@ -16,6 +16,7 @@ import {
 	checkMessage,
 	corbitApiRequest,
 	getAllSenderNames,
+	MAX_IDEMPOTENCY_KEY_LENGTH,
 	normalizeNumber,
 	splitNumbers,
 } from './GenericFunctions';
@@ -83,26 +84,37 @@ export class CorbitSms implements INodeType {
 
 				if (resource === 'sms' && (operation === 'send' || operation === 'sendBulk')) {
 					const senderName = senderValue(this.getNodeParameter('senderName', i));
-					const message = this.getNodeParameter('message', i) as string;
 					const options = this.getNodeParameter('options', i, {}) as IDataObject;
 					if (senderName === '') {
-						throw new NodeOperationError(node, 'Choose a sender name', { itemIndex: i });
+						throw new NodeOperationError(node, "Choose a value for 'Sender Name'", {
+							itemIndex: i,
+						});
 					}
-					checkMessage(node, message, i);
+					const message = checkMessage(node, this.getNodeParameter('message', i), i);
 
 					const headers: IDataObject = { 'Content-Type': 'application/json' };
-					if (options.idempotencyKey) headers['Idempotency-Key'] = String(options.idempotencyKey);
+					if (options.idempotencyKey !== undefined && String(options.idempotencyKey) !== '') {
+						const key = String(options.idempotencyKey);
+						if (key.length > MAX_IDEMPOTENCY_KEY_LENGTH) {
+							throw new NodeOperationError(
+								node,
+								`'Idempotency Key' is ${key.length} characters; the limit is ${MAX_IDEMPOTENCY_KEY_LENGTH}`,
+								{ itemIndex: i },
+							);
+						}
+						headers['Idempotency-Key'] = key;
+					}
 					if (options.allowDuplicate === true) headers['X-Allow-Duplicate'] = 'true';
 
 					if (operation === 'send') {
-						const raw = this.getNodeParameter('to', i) as string;
+						const raw = this.getNodeParameter('to', i);
 						const number = normalizeNumber(raw);
 						if (!number) {
-							throw new NodeOperationError(
-								node,
-								`"${raw}" is not a valid mobile number (use the international format, e.g. 9665XXXXXXXX)`,
-								{ itemIndex: i },
-							);
+							throw new NodeOperationError(node, `'To' is not a valid mobile number: "${String(raw ?? '')}"`, {
+								itemIndex: i,
+								description:
+									'Use the international format, e.g. 966501234567. Saudi local numbers (05XXXXXXXX) are converted automatically.',
+							});
 						}
 						const response = await corbitApiRequest.call(
 							this,
@@ -122,20 +134,21 @@ export class CorbitSms implements INodeType {
 						if (invalid.length > 0) {
 							throw new NodeOperationError(
 								node,
-								`Invalid mobile number(s): ${invalid.slice(0, 5).join(', ')}${
+								`'Numbers' contains invalid mobile numbers: ${invalid.slice(0, 5).join(', ')}${
 									invalid.length > 5 ? ` and ${invalid.length - 5} more` : ''
 								}`,
 								{
 									itemIndex: i,
 									description:
-										'Corbit SMS rejects the whole request if any number is invalid, so nothing was sent.',
+										'Use the international format, e.g. 966501234567. Corbit SMS rejects the whole request if any number is invalid, so nothing was sent.',
 								},
 							);
 						}
 						const numbers = [...new Set(raw.map((n) => normalizeNumber(n) as string))];
 						if (numbers.length === 0) {
-							throw new NodeOperationError(node, 'Add at least one mobile number', {
+							throw new NodeOperationError(node, "'Numbers' is empty", {
 								itemIndex: i,
+								description: 'Add at least one mobile number.',
 							});
 						}
 						const response = await corbitApiRequest.call(
@@ -158,9 +171,12 @@ export class CorbitSms implements INodeType {
 						});
 					}
 				} else if (resource === 'sms' && (operation === 'getStatus' || operation === 'getReport')) {
-					const messageId = String(this.getNodeParameter('messageId', i)).trim();
+					const messageId = String(this.getNodeParameter('messageId', i) ?? '').trim();
 					if (messageId === '') {
-						throw new NodeOperationError(node, 'Enter the message ID', { itemIndex: i });
+						throw new NodeOperationError(node, "'Message ID' is empty", {
+							itemIndex: i,
+							description: 'Use the message ID returned by the Send or Send Bulk operation.',
+						});
 					}
 					const path =
 						operation === 'getStatus' ? '/api/v1/message-status/' : '/api/v1/message-report/';
@@ -178,7 +194,16 @@ export class CorbitSms implements INodeType {
 							pairedItem: { item: i },
 						});
 					} else {
-						returnData.push({ json: { messageId, ...response }, pairedItem: { item: i } });
+						// One output item per recipient, so each delivery result can be used on its own.
+						const msgs = Array.isArray(response.msgs) ? (response.msgs as IDataObject[]) : [];
+						const jobId = response.jobId;
+						if (msgs.length === 0) {
+							returnData.push({ json: { ...response, messageId, jobId }, pairedItem: { item: i } });
+						} else {
+							for (const m of msgs) {
+								returnData.push({ json: { ...m, messageId, jobId }, pairedItem: { item: i } });
+							}
+						}
 					}
 				} else if (resource === 'account' && operation === 'getBalance') {
 					const response = await corbitApiRequest.call(
@@ -195,15 +220,14 @@ export class CorbitSms implements INodeType {
 				} else if (resource === 'senderName' && operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
-					let senders = await getAllSenderNames.call(this);
+					const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
+					// With a status filter every page is needed; without one, stop at the limit.
+					let senders = await getAllSenderNames.call(this, filters.status ? undefined : limit);
 					if (filters.status) {
 						const wanted = String(filters.status).toLowerCase();
 						senders = senders.filter((s) => String(s.status).toLowerCase() === wanted);
 					}
-					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						senders = senders.slice(0, limit);
-					}
+					if (limit !== undefined) senders = senders.slice(0, limit);
 					returnData.push(...senders.map((s) => ({ json: s, pairedItem: { item: i } })));
 				} else {
 					throw new NodeOperationError(
@@ -214,13 +238,18 @@ export class CorbitSms implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
+					const description = (error as { description?: unknown }).description;
 					returnData.push({
-						json: { error: (error as Error).message },
+						json: {
+							error: (error as Error).message,
+							...(typeof description === 'string' && description ? { description } : {}),
+						},
 						pairedItem: { item: i },
 					});
 					continue;
 				}
-				// Both constructors hand back an error that is already of their type.
+				// n8n's lint rule requires wrapping; both constructors return an error that is
+				// already of their type unchanged, so the message and description are kept.
 				if (error instanceof NodeApiError) {
 					throw new NodeApiError(node, error as unknown as JsonObject, { itemIndex: i });
 				}

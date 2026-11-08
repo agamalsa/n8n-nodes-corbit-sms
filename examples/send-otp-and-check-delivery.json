@@ -1,0 +1,111 @@
+{
+  "name": "Corbit SMS - send OTP and check delivery",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "send-otp",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "corbit-send-otp"
+    },
+    {
+      "parameters": {
+        "resource": "sms",
+        "operation": "send",
+        "senderName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "YourSender"
+        },
+        "to": "={{ $json.body.phone }}",
+        "message": "=Your verification code is {{ $json.body.code }}",
+        "options": {
+          "allowDuplicate": true,
+          "idempotencyKey": "={{ $execution.id }}"
+        }
+      },
+      "name": "Send OTP",
+      "type": "n8n-nodes-corbit-sms.corbitSms",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "name": "Wait 30 seconds",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        440,
+        0
+      ],
+      "webhookId": "corbit-otp-wait"
+    },
+    {
+      "parameters": {
+        "resource": "sms",
+        "operation": "getStatus",
+        "messageId": "={{ $('Send OTP').item.json.messageId }}"
+      },
+      "name": "Get Status",
+      "type": "n8n-nodes-corbit-sms.corbitSms",
+      "typeVersion": 1,
+      "position": [
+        660,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Send OTP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send OTP": {
+      "main": [
+        [
+          {
+            "node": "Wait 30 seconds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 30 seconds": {
+      "main": [
+        [
+          {
+            "node": "Get Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

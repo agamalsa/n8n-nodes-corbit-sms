@@ -43,6 +43,10 @@ test('normalizeNumber handles international, 00, Saudi local and junk', () => {
 	assert.equal(G.normalizeNumber('0501234567'), '966501234567');
 	assert.equal(G.normalizeNumber('501234567'), '966501234567');
 	assert.equal(G.normalizeNumber('201001234567'), '201001234567');
+	assert.equal(G.normalizeNumber('+971 50 123 4567'), '971501234567');
+	// local numbers of other countries are rejected instead of guessed
+	assert.equal(G.normalizeNumber('01001234567'), undefined);
+	assert.equal(G.normalizeNumber('0123456789'), undefined);
 	assert.equal(G.normalizeNumber(966501234567), '966501234567');
 	assert.equal(G.normalizeNumber('12'), undefined);
 	assert.equal(G.normalizeNumber('1234567890123456'), undefined);
@@ -121,10 +125,11 @@ test('send: custom base URL is used without a double slash', async () => {
 test('send: invalid number, empty or too long message and empty sender fail before any request', async () => {
 	const base = { resource: 'sms', operation: 'send', senderName: 'S', to: '966501234567', message: 'Hi', options: {} };
 	for (const [patch, re] of [
-		[{ to: '12' }, /not a valid mobile number/],
-		[{ message: '   ' }, /message is empty/],
-		[{ message: 'x'.repeat(1601) }, /1601 characters; the limit is 1600/],
-		[{ senderName: ' ' }, /Choose a sender name/],
+		[{ to: '12' }, /'To' is not a valid mobile number/],
+		[{ message: '   ' }, /'Message' is empty/],
+		[{ message: 'x'.repeat(1601) }, /'Message' is 1601 characters; the limit is 1600/],
+		[{ senderName: ' ' }, /Choose a value for 'Sender Name'/],
+		[{ options: { idempotencyKey: 'k'.repeat(256) } }, /'Idempotency Key' is 256 characters; the limit is 255/],
 	]) {
 		const c = ctx({ params: [{ ...base, ...patch }] });
 		await assert.rejects(run(c), re);
@@ -144,7 +149,7 @@ test('send: API error message, code and HTTP status reach the user', async () =>
 		assert.equal(e.name, 'NodeApiError');
 		assert.match(e.message, /Insufficient balance/);
 		assert.equal(e.httpCode, '402');
-		assert.match(e.description, /INSUFFICIENT_BALANCE/);
+		assert.match(e.description, /balance is not enough/);
 		return true;
 	});
 });
@@ -187,10 +192,37 @@ test('continueOnFail returns the error per item and keeps going', async () => {
 	});
 	const [out] = await run(c);
 	assert.equal(out.length, 2);
-	assert.match(out[0].json.error, /not a valid mobile number/);
+	assert.match(out[0].json.error, /'To' is not a valid mobile number/);
+	assert.match(out[0].json.description, /international format/);
 	assert.deepEqual(out[0].pairedItem, { item: 0 });
 	assert.equal(out[1].json.messageId, 'm2');
 	assert.deepEqual(out[1].pairedItem, { item: 1 });
+});
+
+test('send: a number from an expression (e.g. an OTP code) is sent as text', async () => {
+	const c = ctx({
+		params: [{ resource: 'sms', operation: 'send', senderName: 'S', to: 966501234567, message: 4821, options: {} }],
+		responses: [ok({ status: 'Success', data: { message: { id: 'x', status: 'pending' } } })],
+	});
+	await run(c);
+	assert.equal(c.calls[0].body.messageBody, '4821');
+	assert.equal(c.calls[0].body.number, '966501234567');
+});
+
+test('errors: known Corbit codes get a hint, HTTP 200 with status Error has no made-up code', async () => {
+	const params = [{ resource: 'sms', operation: 'send', senderName: 'S', to: '966501234567', message: 'Hi', options: {} }];
+	await assert.rejects(run(ctx({ params, responses: [fail(422, { status: 'Error', message: 'm', code: 'IDEMPOTENCY_KEY_REUSED' })] })), (e) => /different 'Idempotency Key'/.test(e.description));
+	await assert.rejects(run(ctx({ params, responses: [fail(409, { status: 'Error', message: 'm', code: 'IDEMPOTENCY_IN_PROGRESS' })] })), (e) => /still being processed/.test(e.description));
+	await assert.rejects(run(ctx({ params, responses: [fail(403, { status: 'Error', message: 'm', code: 'SENDER_NOT_ALLOWED' })] })), (e) => /not approved/.test(e.description));
+	await assert.rejects(run(ctx({ params, responses: [fail(400, { status: 'Error', message: 'm', code: 'SOMETHING_NEW' })] })), (e) => /Corbit SMS code: SOMETHING_NEW/.test(e.description));
+	await assert.rejects(run(ctx({ params, responses: [ok({ status: 'Error', message: 'Sender not approved' })] })), (e) => e.httpCode !== '400');
+});
+
+test('sender names: with a limit and no filter, paging stops early', async () => {
+	const c = ctx({ params: [{ resource: 'senderName', operation: 'getAll', returnAll: false, limit: 10, filters: {} }], responses: [page(senders(50), 200, 1), page(senders(50, 50), 200, 2)] });
+	const [out] = await run(c);
+	assert.equal(c.calls.length, 1);
+	assert.equal(out.length, 10);
 });
 
 // ---------- send bulk ----------
@@ -217,12 +249,12 @@ test('sendBulk: accepts an array from an expression', async () => {
 test('sendBulk: any invalid number stops the whole send, empty list too', async () => {
 	const base = { resource: 'sms', operation: 'sendBulk', senderName: 'S', message: 'B', options: {} };
 	let c = ctx({ params: [{ ...base, numbers: '966501234567, 12, abc' }] });
-	await assert.rejects(run(c), (e) => /Invalid mobile number\(s\): 12, abc$/.test(e.message) && /nothing was sent/.test(e.description));
+	await assert.rejects(run(c), (e) => /'Numbers' contains invalid mobile numbers: 12, abc$/.test(e.message) && /nothing was sent/.test(e.description));
 	assert.equal(c.calls.length, 0);
 	c = ctx({ params: [{ ...base, numbers: '1,2,3,4,5,6,7' }] });
 	await assert.rejects(run(c), /1, 2, 3, 4, 5 and 2 more/);
 	c = ctx({ params: [{ ...base, numbers: ' , ' }] });
-	await assert.rejects(run(c), /at least one mobile number/);
+	await assert.rejects(run(c), /'Numbers' is empty/);
 });
 
 // ---------- status / report ----------
@@ -241,10 +273,17 @@ test('getStatus and getReport call the right paths', async () => {
 	c = ctx({ params: [{ resource: 'sms', operation: 'getReport', messageId: 'm1' }], responses: [ok(report)] });
 	[out] = await run(c);
 	assert.equal(c.calls[0].url, 'https://api.corbit.sa/api/v1/message-report/m1');
-	assert.deepEqual(out[0].json, { messageId: 'm1', ...report });
+	assert.equal(out.length, 1);
+	assert.deepEqual(out[0].json, { destAddress: '966501234567', status: 'delivered', accepted: true, messageId: 'm1', jobId: 'moe-1' });
+	c = ctx({ params: [{ resource: 'sms', operation: 'getReport', messageId: 'm2' }], responses: [ok({ jobId: 'j2', msgs: [{ destAddress: 'a', status: 'delivered' }, { destAddress: 'b', status: 'failed', messageId: 'evil' }] })] });
+	[out] = await run(c);
+	assert.deepEqual(out.map((o) => [o.json.destAddress, o.json.status, o.json.messageId, o.json.jobId]), [['a', 'delivered', 'm2', 'j2'], ['b', 'failed', 'm2', 'j2']]);
+	c = ctx({ params: [{ resource: 'sms', operation: 'getReport', messageId: 'm3' }], responses: [ok({ jobId: 'j3', msgs: [] })] });
+	[out] = await run(c);
+	assert.deepEqual(out[0].json, { jobId: 'j3', msgs: [], messageId: 'm3' });
 
 	c = ctx({ params: [{ resource: 'sms', operation: 'getStatus', messageId: '' }] });
-	await assert.rejects(run(c), /Enter the message ID/);
+	await assert.rejects(run(c), /'Message ID' is empty/);
 	assert.equal(c.calls.length, 0);
 });
 
@@ -280,7 +319,7 @@ test('sender names: stops when the API ignores page, on empty pages and with no 
 	let c = ctx({ params: [{ resource: 'senderName', operation: 'getAll', returnAll: true, filters: {} }], responses: [page(senders(50), 999, 1), page(senders(50), 999, 1)] });
 	let [out] = await run(c);
 	assert.equal(c.calls.length, 2);
-	assert.equal(out.length, 100);
+	assert.equal(out.length, 50); // the repeated page is not added twice
 
 	c = ctx({ params: [{ resource: 'senderName', operation: 'getAll', returnAll: true, filters: {} }], responses: [page([], 0, 1)] });
 	[out] = await run(c);
@@ -333,10 +372,10 @@ test('send accepts the sender as a resource locator value, and old plain strings
 		assert.equal(c.calls[0].body.senderName, 'OT.SA');
 	}
 	const c = ctx({ params: [{ resource: 'sms', operation: 'send', senderName: { __rl: true, mode: 'list', value: '' }, to: '966501234567', message: 'Hi', options: {} }] });
-	await assert.rejects(run(c), /Choose a sender name/);
+	await assert.rejects(run(c), /Choose a value for 'Sender Name'/);
 	assert.equal(c.calls.length, 0);
 	const n = ctx({ params: [{ resource: 'sms', operation: 'send', senderName: null, to: '966501234567', message: 'Hi', options: {} }] });
-	await assert.rejects(run(n), /Choose a sender name/);
+	await assert.rejects(run(n), /Choose a value for 'Sender Name'/);
 });
 
 test('unknown operation is reported', async () => {

@@ -45,7 +45,7 @@ Keep **Base URL** as `https://api.corbit.sa` unless Corbit support gives you ano
 
 **Sender name.** Open the list to pick one of your approved sender names (it loads when you open it), or switch to **By Name** and type the name. You can also use an expression.
 
-**Send Bulk.** Enter the numbers separated by commas or new lines, or pass a list with an expression. Duplicates are removed. If any number is invalid, the node stops before sending, because Corbit SMS rejects the whole request.
+**Send Bulk.** Enter the numbers separated by commas (also the Arabic « ، »), semicolons, tabs, new lines or spaces, or pass a list with an expression. A number copied from phone contacts with spaces, such as `+966 50 123 4567`, is read as one number. Duplicates are removed. If any number is invalid, the node stops before sending, because Corbit SMS rejects the whole request.
 
 **Message length.** Up to 1600 characters.
 

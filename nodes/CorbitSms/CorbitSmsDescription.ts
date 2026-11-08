@@ -136,7 +136,7 @@ export const nodeProperties: INodeProperties[] = [
 		placeholder: 'e.g. 966501234567, 966551234567',
 		displayOptions: { show: { resource: ['sms'], operation: ['sendBulk'] } },
 		description:
-			'Comma-separated mobile numbers in international format (new lines also work). If any number is invalid, nothing is sent.',
+			'Mobile numbers in international format, separated by commas (the Arabic comma works too), semicolons, tabs, new lines or spaces. If any number is invalid, nothing is sent.',
 	},
 	{
 		displayName: 'Message',

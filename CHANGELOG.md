@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2 (2026-11-08)
+
+- Lists of numbers are read like the Corbit SMS app: the Arabic comma and semicolon (« ، » « ؛ », typed by the Arabic iPhone keyboard) and tabs (from a spreadsheet) separate numbers too, and numbers separated only by spaces are read one by one. A number copied from phone contacts with spaces, such as `+966 50 123 4567`, stays one number.
+
 ## 1.1.1 (2026-11-08)
 
 - Phone numbers are checked more strictly, so a messy value can never turn into a different, valid-looking number. Values such as `9.66501E+11` (a number exported from a spreadsheet), `966501234567.0` or `+966 50 123 4567 ext 12` are now rejected with an error instead of being sent.

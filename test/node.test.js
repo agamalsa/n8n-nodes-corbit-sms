@@ -66,8 +66,28 @@ test('normalizeNumber handles international, 00, Saudi local and junk', () => {
 	assert.equal(G.normalizeNumber(undefined), undefined);
 });
 
+test('splitNumbers reads lists like the Corbit SMS app', () => {
+	assert.deepEqual(G.splitNumbers('0501234567، 0551234567؛0561234567'), ['0501234567', '0551234567', '0561234567']);
+	assert.deepEqual(G.splitNumbers('0501234567\t0551234567'), ['0501234567', '0551234567']);
+	assert.deepEqual(G.splitNumbers('0501234567 0509876543'), ['0501234567', '0509876543']);
+	assert.deepEqual(G.splitNumbers('+966 50 123 4567, 05 0987 6543'), ['+966501234567', '0509876543']);
+	assert.deepEqual(G.splitNumbers('+966 50 123 4567'), ['+966501234567']);
+	assert.deepEqual(G.splitNumbers('966501234567 ext 12'), ['966501234567', 'ext', '12']);
+});
+
+test('send bulk with an Arabic-comma list sends to every number', async () => {
+	const c = ctx({
+		params: [{ resource: 'sms', operation: 'sendBulk', senderName: 'S', numbers: '0501234567، 0551234567 0561234567', message: 'hi', options: {} }],
+		responses: [ok({ status: 'Success', data: { message: { id: 'b9', status: 'pending' } } })],
+	});
+	const [out] = await run(c);
+	assert.deepEqual(out[0].json.numbers, ['966501234567', '966551234567', '966561234567']);
+	const bad = ctx({ params: [{ resource: 'sms', operation: 'sendBulk', senderName: 'S', numbers: '966501234567 ext 12', message: 'hi', options: {} }], responses: [] });
+	await assert.rejects(run(bad), /invalid mobile numbers: ext, 12/);
+});
+
 test('splitNumbers accepts text with any separator and nested arrays', () => {
-	assert.deepEqual(G.splitNumbers('1, 2;3\n4\r\n+966 55 000 0000'), ['1', '2', '3', '4', '+966 55 000 0000']);
+	assert.deepEqual(G.splitNumbers('1, 2;3\n4\r\n+966 55 000 0000'), ['1', '2', '3', '4', '+966550000000']);
 	assert.deepEqual(G.splitNumbers(['1', ['2, 3']]), ['1', '2', '3']);
 	assert.deepEqual(G.splitNumbers(null), []);
 	assert.deepEqual(G.splitNumbers(''), []);

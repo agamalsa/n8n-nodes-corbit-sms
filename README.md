@@ -42,7 +42,7 @@ Keep **Base URL** as `https://api.corbit.sa` unless Corbit support gives you ano
 
 **Phone numbers.** Use the international format, for example `9665XXXXXXXX`. Spaces, dashes, a leading `+` or `00` are removed. Saudi local numbers such as `05XXXXXXXX` are converted to `9665XXXXXXXX`.
 
-**Sender name.** Only approved sender names appear in the list. You can also enter one with an expression.
+**Sender name.** Open the list to pick one of your approved sender names (it loads when you open it), or switch to **By Name** and type the name. You can also use an expression.
 
 **Send Bulk.** Enter the numbers separated by commas or new lines, or pass an array with an expression. Duplicates are removed. If any number is invalid, the node stops before sending, because Corbit SMS rejects the whole request.
 

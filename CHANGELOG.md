@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2 (2026-11-08)
+
+- Fix: the Sender Name list no longer shows "Error fetching options" when a Send node is first added. It is now a list that loads when opened, with a **By Name** option to type the sender.
+- Existing workflows that saved the sender as plain text keep working.
+
 ## 1.0.1 (2026-11-08)
 
 - Docs: clearer install steps (Settings → Community Nodes) and support contacts in the README.

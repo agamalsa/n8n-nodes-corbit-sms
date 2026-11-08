@@ -6,7 +6,7 @@ import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
+	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
@@ -20,6 +20,14 @@ import {
 	splitNumbers,
 } from './GenericFunctions';
 import { nodeProperties } from './CorbitSmsDescription';
+
+/** Reads the sender from a resource locator ({ mode, value }) or a plain string from older workflows. */
+export function senderValue(raw: unknown): string {
+	if (raw && typeof raw === 'object' && 'value' in raw) {
+		return String((raw as IDataObject).value ?? '').trim();
+	}
+	return raw === null || raw === undefined ? '' : String(raw).trim();
+}
 
 export class CorbitSms implements INodeType {
 	description: INodeTypeDescription = {
@@ -46,13 +54,19 @@ export class CorbitSms implements INodeType {
 	};
 
 	methods = {
-		loadOptions: {
-			async getSenderNames(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+		listSearch: {
+			async searchSenderNames(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				const wanted = (filter ?? '').trim().toLowerCase();
 				const senders = await getAllSenderNames.call(this);
-				return senders
+				const results = senders
 					.filter((s) => String(s.status).toLowerCase() === 'approved')
 					.map((s) => ({ name: String(s.name), value: String(s.name) }))
+					.filter((s) => wanted === '' || s.name.toLowerCase().includes(wanted))
 					.sort((a, b) => a.name.localeCompare(b.name));
+				return { results };
 			},
 		},
 	};
@@ -68,7 +82,7 @@ export class CorbitSms implements INodeType {
 				const operation = this.getNodeParameter('operation', i) as string;
 
 				if (resource === 'sms' && (operation === 'send' || operation === 'sendBulk')) {
-					const senderName = String(this.getNodeParameter('senderName', i)).trim();
+					const senderName = senderValue(this.getNodeParameter('senderName', i));
 					const message = this.getNodeParameter('message', i) as string;
 					const options = this.getNodeParameter('options', i, {}) as IDataObject;
 					if (senderName === '') {

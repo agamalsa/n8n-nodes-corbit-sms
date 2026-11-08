@@ -90,15 +90,29 @@ export const nodeProperties: INodeProperties[] = [
 	//         sms: send / sendBulk
 	// ----------------------------------
 	{
-		displayName: 'Sender Name or ID',
+		// A resource locator loads the list only when it is opened, after n8n has
+		// attached the credential, so a newly added node never shows a loading error.
+		displayName: 'Sender Name',
 		name: 'senderName',
-		type: 'options',
-		typeOptions: { loadOptionsMethod: 'getSenderNames' },
+		type: 'resourceLocator',
 		required: true,
-		default: '',
+		default: { mode: 'list', value: '' },
 		displayOptions: { show: { resource: ['sms'], operation: sendOps } },
-		description:
-			'Approved sender name the message is sent from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		description: 'Approved sender name the message is sent from',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: { searchListMethod: 'searchSenderNames', searchable: true },
+			},
+			{
+				displayName: 'By Name',
+				name: 'name',
+				type: 'string',
+				placeholder: 'e.g. MyBrand',
+			},
+		],
 	},
 	{
 		displayName: 'To',

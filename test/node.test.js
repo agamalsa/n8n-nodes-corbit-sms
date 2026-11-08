@@ -305,12 +305,38 @@ test('sender names: status filter and limit', async () => {
 	assert.equal(out.length, 2);
 });
 
-test('loadOptions lists approved sender names only, sorted', async () => {
-	const c = ctx({
-		responses: [page([{ name: 'Zeta', status: 'approved' }, { name: 'Beta', status: 'rejected' }, { name: 'Alpha', status: 'Approved' }, { name: 'Old', status: 'expired' }], 4, 1)],
-	});
-	const opts = await new CorbitSms().methods.loadOptions.getSenderNames.call(c);
-	assert.deepEqual(opts, [{ name: 'Alpha', value: 'Alpha' }, { name: 'Zeta', value: 'Zeta' }]);
+test('sender list (resource locator) shows approved names only, sorted, and filters by search', async () => {
+	const list = [{ name: 'Zeta', status: 'approved' }, { name: 'Beta', status: 'rejected' }, { name: 'Alpha', status: 'Approved' }, { name: 'Old', status: 'expired' }];
+	let c = ctx({ responses: [page(list, 4, 1)] });
+	let res = await new CorbitSms().methods.listSearch.searchSenderNames.call(c);
+	assert.deepEqual(res, { results: [{ name: 'Alpha', value: 'Alpha' }, { name: 'Zeta', value: 'Zeta' }] });
+	c = ctx({ responses: [page(list, 4, 1)] });
+	res = await new CorbitSms().methods.listSearch.searchSenderNames.call(c, ' ze ');
+	assert.deepEqual(res, { results: [{ name: 'Zeta', value: 'Zeta' }] });
+});
+
+test('sender field is a resource locator with list and by-name modes', () => {
+	const p = new CorbitSms().description.properties.find((x) => x.name === 'senderName');
+	assert.equal(p.type, 'resourceLocator');
+	assert.deepEqual(p.modes.map((m) => m.name), ['list', 'name']);
+	assert.equal(p.modes[0].typeOptions.searchListMethod, 'searchSenderNames');
+	assert.deepEqual(p.default, { mode: 'list', value: '' });
+});
+
+test('send accepts the sender as a resource locator value, and old plain strings', async () => {
+	for (const sender of [{ __rl: true, mode: 'list', value: 'OT.SA' }, { __rl: true, mode: 'name', value: '  OT.SA ' }, 'OT.SA']) {
+		const c = ctx({
+			params: [{ resource: 'sms', operation: 'send', senderName: sender, to: '966501234567', message: 'Hi', options: {} }],
+			responses: [ok({ status: 'Success', data: { message: { id: 'm', status: 'pending' } } })],
+		});
+		await run(c);
+		assert.equal(c.calls[0].body.senderName, 'OT.SA');
+	}
+	const c = ctx({ params: [{ resource: 'sms', operation: 'send', senderName: { __rl: true, mode: 'list', value: '' }, to: '966501234567', message: 'Hi', options: {} }] });
+	await assert.rejects(run(c), /Choose a sender name/);
+	assert.equal(c.calls.length, 0);
+	const n = ctx({ params: [{ resource: 'sms', operation: 'send', senderName: null, to: '966501234567', message: 'Hi', options: {} }] });
+	await assert.rejects(run(n), /Choose a sender name/);
 });
 
 test('unknown operation is reported', async () => {

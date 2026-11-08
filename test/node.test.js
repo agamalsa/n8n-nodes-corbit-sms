@@ -38,6 +38,9 @@ const run = (c) => new CorbitSms().execute.call(c);
 
 // ---------- helpers ----------
 test('normalizeNumber rejects input that could become a wrong number', () => {
+	assert.equal(G.normalizeNumber('9665012345678'), undefined);
+	assert.equal(G.normalizeNumber('96650123456'), undefined);
+	assert.equal(G.normalizeNumber('+966 50 123 45678'), undefined);
 	for (const bad of ['9.66501E+11', '966501234567.0', '+966 50 123 4567 ext 12', 966501234567.5, -966501234567, 'abc966501234567', '+0501234567', {}, ['966501234567']]) {
 		assert.equal(G.normalizeNumber(bad), undefined, String(bad));
 	}
